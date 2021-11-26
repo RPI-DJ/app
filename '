@@ -1,0 +1,57 @@
+use std::convert::From;
+use std::io;
+use jack::Client;
+
+const MAX_MIDI: usize = 3;
+
+#[derive(Copy, Clone)]
+pub struct MidiCopy {
+    len: usize,
+    data: [u8; MAX_MIDI],
+    time: jack::Frames,
+}
+
+impl From<jack::RawMidi<'_>> for MidiCopy {
+    fn from(midi: jack::RawMidi<'_>) -> Self {
+        let len = std::cmp::min(MAX_MIDI, midi.bytes.len());
+        let mut data = [0; MAX_MIDI];
+        data[..len].copy_from_slice(&midi.bytes[..len]);
+        MidiCopy{
+            len,
+            data,
+            time: midi.time,
+        }
+    }
+}
+
+impl std::fmt::Debug for MidiCopy {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Midi {{ time: {}, len {}, data: {:?} }}",
+            self.time,
+            self.len,
+            &self.data[..self.len]
+            )
+    }
+}
+
+pub fn midi_choice(client: Client) -> usize {
+    println!("Select a port");
+    let ports = client.ports(None, None, jack::PortFlags::IS_OUTPUT);
+    let mut i = 0;
+    for port in &ports {
+        println!("{}: {}", i, port);
+        i += 1;
+    }
+
+    let mut raw_port_choice = String::new();
+    io::stdin().read_line(&mut raw_port_choice).ok();
+    println!("{}", raw_port_choice);
+    return raw_port_choice.trim().parse::<usize>().unwrap();
+
+} 
+
+pub fn create_client(client_name: str) -> Client {
+    let (client, _status) = Client::new("rust_jack_midi", jack::ClientOptions::NO_START_SERVER).unwrap();
+}
